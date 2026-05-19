@@ -1,0 +1,122 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  REPRESENTATIVE
+  ALUMNI
+}
+
+enum Status {
+  PENDING
+  UNDER_REVIEW
+  AWAITING_STUDENT_RESPONSE
+  SOLVED
+  REJECTED
+  HIDDEN
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(STUDENT)
+  department   String?   // Relevant for Teachers/Dept Heads and optionally students
+  isApproved   Boolean   @default(false) // Required for Teacher/Student/Alumni manual approval
+  isBanned     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relationships
+  complaintsSubmitted Complaint[] @relation("complainant")
+  complaintsTargeted  Complaint[] @relation("targetTeacher")
+  comments            Comment[]
+  notifications       Notification[]
+}
+
+model Complaint {
+  id              String      @id @default(uuid())
+  summary         String
+  description     String      // Large text
+  categories      String      // Comma-separated or JSON string of categories
+  tags            String?     // Comma-separated tags
+  visibility      Visibility  @default(PUBLIC)
+  isAnonymous     Boolean     @default(true)
+  status          Status      @default(PENDING)
+  rejectionReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relationships
+  complainantId   String
+  complainant     User        @relation("complainant", fields: [complainantId], references: [id], onDelete: Cascade)
+  
+  // Teachers targeted by this complaint
+  targetTeacherId String?
+  targetTeacher   User?       @relation("targetTeacher", fields: [targetTeacherId], references: [id])
+
+  comments        Comment[]
+  attachments     Attachment[]
+}
+
+model Comment {
+  id          String    @id @default(uuid())
+  content     String
+  isAnonymous Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  // Relationships
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  attachments Attachment[]
+}
+
+model Attachment {
+  id          String     @id @default(uuid())
+  filename    String     // Randomized string, e.g., evidence_91af2.png
+  original    String     // Original filename for UI display
+  mimeType    String
+  url         String     // Serving path, e.g., /uploads/evidence_91af2.png
+  createdAt   DateTime   @default(now())
+
+  // Relationships
+  complaintId String?
+  complaint   Complaint? @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  commentId   String?
+  comment     Comment?   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?  // Click to view complaint thread
+  createdAt DateTime @default(now())
+}
+
+model BanRecord {
+  id       String   @id @default(uuid())
+  email    String   @unique
+  reason   String?
+  bannedAt DateTime @default(now())
+}
