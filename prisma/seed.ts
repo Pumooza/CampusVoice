@@ -1,6 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaLibSql } from '@prisma/adapter-libsql';
-import { createClient } from '@libsql/client';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
@@ -28,28 +26,9 @@ try {
 console.log('--- DATABASE DIAGNOSTICS ---');
 console.log('cwd:', process.cwd());
 console.log('process.env.DATABASE_URL raw:', process.env.DATABASE_URL);
-
-// Defensive check for "undefined" or "null" literal strings
-const envUrl = process.env.DATABASE_URL;
-let connectionString = (envUrl && envUrl !== 'undefined' && envUrl !== 'null') ? envUrl : 'file:./dev.db';
-
-console.log('Defensive connectionString:', connectionString);
-
-// Resolve relative file paths to absolute paths relative to project root directory
-if (connectionString.startsWith('file:')) {
-  const relativePath = connectionString.substring(5);
-  if (!path.isAbsolute(relativePath)) {
-    const absolutePath = path.resolve(process.cwd(), relativePath);
-    connectionString = `file:${absolutePath}`;
-  }
-}
-
-
-console.log('Resolved connectionString:', connectionString);
 console.log('-----------------------------');
 
-const adapter = new PrismaLibSql({ url: connectionString });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 
 
